@@ -87,7 +87,13 @@ df_commit
 請創造一個答案函數物件叫commit_df_fun, 其input為oneCommitRecord, output為df_commit。最後一行請寫commit_df_fun, 不要加`()`
 ```{r ans103}
 commit_df_fun <- function(oneCommitRecord){
-  return(df_commit)
+data.frame(author=oneCommitRecord$commit$author$name,
+           commiter=oneCommitRecord$commit$committer$name,
+           commitDate=oneCommitRecord$commit$committer$date,
+           sha=oneCommitRecord$sha,
+           stringsAsFactors=F 
+           ) ->df_commit
+return(df_commit)
 } 
 commit_df_fun
 # commit_df_fun
@@ -96,7 +102,7 @@ commit_df_fun
 ### 1.4 產生完整data frame
 使用作業3的2.4小題所提及的purrr套件之`map_dfr()`函數，將commitHistory的所有30筆資料轉成與1.2小題df_commit一樣欄位名稱但有30筆資料的data fram答案物件df_allCommits, 最後一行請寫df_allCommits
 ```{r ans104}
-map
+map_dfr(commitHistory,commit_df_fun) -> df_allCommits
 df_allCommits
 # df_allCommits
 ```
@@ -105,6 +111,8 @@ df_allCommits
 只有當author與committer是同一人時，該commit才會是該使用者對此repo的貢獻（若不同，可能是其中一個完成，另一人只是引入他的成就）。在df_allCommits新增一個logical class變數稱為samePerson，其值為TRUE當author與commiter同一人。(最後一行請打df_allCommits$samePerson)
 
 ```{r ans105}
+df_allCommits$samePerson <- (df_allCommits$author == df_allCommits$commiter) 
+df_allCommits$samePerson
 # df_allCommits$samePerson
 ```
 
@@ -112,18 +120,27 @@ df_allCommits
 請取出df_allCommits中為同一人貢獻的子樣本，存在答案物件df_validCommits。
 
 ```{r ans106}
+df_allCommits$samePerson ->valid
+df_allCommits[valid,] ->df_validCommits
+df_validCommits
 # df_validCommits
 ```
 
 ### 1.7 日期
 df_validCommits中的commitDate為UTC時區表示的時間"字串"，請將它轉成以"Asia/Taipei"時區顯示的POSIXct class資料，最後一行請打答案物件df_validCommits$commitDate。
 ```{r ans107}
+ymd_hms(df_validCommits$commitDate,tz="Asia/Taipei")-> df_validCommits$commitDate
+class(df_validCommits$commitDate)
+df_validCommits$commitDate
 # df_validCommits$commitDate
 ```
 
 ### 1.8 hh變數
 請由`df_validCommits$commitDate`中取出台灣時區的小時數（0-23間）存在`df_validCommits$hh`中，其class為integer，最後一行請打df_validCommits$hh。
 ```{r ans108}
+hour(df_validCommits$commitDate)->df_validCommits$hh
+class(df_validCommits$hh)
+df_validCommits$hh
 # df_validCommits$hh
 ```
 
@@ -131,6 +148,10 @@ df_validCommits中的commitDate為UTC時區表示的時間"字串"，請將它�
 請由`df_validCommits$commitDate`中取出它的YYYY-MM-DD日期存在`df_validCommits$date`中，其class為Date，最後一行請打df_validCommits$date。
 
 ```{r ans109}
+str_c(year(df_validCommits$commitDate),"-",month(df_validCommits$commitDate),"-",day(df_validCommits$commitDate))->df_validCommits$date
+ymd(df_validCommits$date)-> df_validCommits$date
+class(df_validCommits$date)
+df_validCommits$date
 # df_validCommits$date
 ```
 
@@ -138,18 +159,25 @@ df_validCommits中的commitDate為UTC時區表示的時間"字串"，請將它�
 請由`df_validCommits$commitDate`中取出它是星期幾存在`df_validCommits$weekday`中，其class為integer（1是星期天，2是星期一，...，7是星期六），最後一行請打df_validCommits$weekday。(hint：使用`lubridate::wday()`函數)
 
 ```{r ans110}
+wday(df_validCommits$commitDate)->df_validCommits$weekday
+class(df_validCommits$weekday)
+df_validCommits$weekday
 # df_validCommits$weekday
 ```
 
 ### 1.11 星期一到三且12-23
 在df_validCommits裡創立一個新的validCommit欄位，class為logical，其值為TRUE若commitDate落在星期一到三，小時在12到23間（含起迄）；最後一行請打df_validCommits$validCommit。
 ```{r ans111}
+df_validCommits$validCommit<-(df_validCommits$weekday>=1&df_validCommits$weekday<=3)&(df_validCommits$hh>=12&df_validCommits$hh<=23)
+df_validCommits$validCommit
 # df_validCommits$validCommit
 ```
 
 ### 1.12 取出合格條件子樣本
 取出df_validCommits中commitDate落在星期一到三，小時在12到23間（含起迄）的子樣本，存在data frame class的答案物件df_validCommitsSubsample中，最後一行打df_validCommitsSubsample。
 ```{r ans112}
+df_validCommits[df_validCommits$validCommit,]-> df_validCommitsSubsample
+df_validCommitsSubsample
 # df_validCommitsSubsample
 ```
 
@@ -158,6 +186,9 @@ df_validCommits中的commitDate為UTC時區表示的時間"字串"，請將它�
 符合上述條件的日期時間，每個日期只需計算一次——即同一天有多個commit落在上述時間區間條件的只計算一次。在不重覆計算下，請問有多少筆合格的commits，將此integer class值存在答案物件validCounts。(hint: `length()`可從vector角度計算物件有幾個元素，`nrow()`只針對方形資料計算它的列數)
 
 ```{r ans113}
+length(unique(df_validCommitsSubsample$date))->validCounts
+class(validCounts)
+validCounts
 # validCounts
 ```
 
@@ -202,6 +233,27 @@ valid_commit_count <- function(username,reponame,wday,startHour,endHour){
 ```
 最後一行請打valid_commit_count。
 ```{r ans114}
+valid_commit_count <- function(username,reponame,wday,startHour,endHour){
+
+  commitHistory <- content(GET(...)) 
+  map_dfr(commitHistory,commit_df_fun) -> df_allCommits
+  df_allCommits$samePerson <- (df_allCommits$author == df_allCommits$commiter) 
+  df_allCommits$samePerson ->valid
+  df_allCommits[valid,] ->df_validCommits
+  ymd_hms(df_validCommits$commitDate,tz="Asia/Taipei")-> df_validCommits$commitDate
+  hour(df_validCommits$commitDate)->df_validCommits$hh
+  str_c(year(df_validCommits$commitDate),"-",month(df_validCommits$commitDate),"-",day(df_validCommits$commitDate))->df_validCommits$date
+  ymd(df_validCommits$date)-> df_validCommits$date
+  wday(df_validCommits$commitDate)->df_validCommits$weekday
+  wday<-df_validCommits$weekday>=1&df_validCommits$weekday<=3
+  startHour<-df_validCommits$hh>=12
+  endHour<-df_validCommits$hh<=23
+  df_validCommits$validCommit<-(wday)&(startHour)&(endHour)
+  df_validCommits[df_validCommits$validCommit,]-> df_validCommitsSubsample
+  length(unique(df_validCommitsSubsample$date))->validCounts
+  return(validCounts)
+}
+valid_commit_count
 # valid_commit_count
 ```
 
